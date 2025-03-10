@@ -9,3 +9,4 @@ pytesseract
 joblib
 pandas
 nest_asyncio
+scikit-learn
