@@ -42,8 +42,16 @@ number_plate_model_path = os.path.join(MODEL_DIR, "model.pkl")
 truck_model = YOLO(truck_model_path)
 license_plate_model = YOLO(license_plate_model_path)
 
-# ✅ Load Number Plate Classifier
-number_plate_model = joblib.load(number_plate_model_path)
+# ✅ Load Number Plate Classifier (Handle Missing File Safely)
+if os.path.exists(number_plate_model_path):
+    try:
+        number_plate_model = joblib.load(number_plate_model_path)
+    except Exception as e:
+        st.error(f"⚠️ Error loading model.pkl: {str(e)}")
+        number_plate_model = None
+else:
+    st.error("⚠️ model.pkl not found in the models/ directory!")
+    number_plate_model = None
 
 # ✅ Image Preprocessing for ResNet50
 transform = transforms.Compose([
@@ -110,12 +118,15 @@ if uploaded_file:
                         st.image(lp_crop, caption="Detected License Plate", use_container_width=True)
 
                         # ✅ Extract Features and Classify Number Plate
-                        features = np.array(extract_features(lp_crop)).reshape(1, -1)
-                        if np.isnan(features).any():
-                            st.error("Error in extracted features: NaN values found.")
+                        if number_plate_model is not None:
+                            features = np.array(extract_features(lp_crop)).reshape(1, -1)
+                            if np.isnan(features).any():
+                                st.error("Error in extracted features: NaN values found.")
+                            else:
+                                number_plate_prediction = number_plate_model.predict(features)[0]
+                                number_plate_type = "New" if number_plate_prediction == 1 else "Old"
                         else:
-                            number_plate_prediction = number_plate_model.predict(features)[0]
-                            number_plate_type = "New" if number_plate_prediction == 1 else "Old"
+                            st.error("⚠️ Number plate classifier model is missing!")
 
     # ✅ Display Results
     st.subheader("Results:")
